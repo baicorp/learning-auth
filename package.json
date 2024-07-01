@@ -1,0 +1,19 @@
+{
+  "name": "bun-hono",
+  "module": "./backend/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot run ./backend/server.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "arctic": "^1.9.1",
+    "drizzle-orm": "^0.31.2",
+    "hono": "^4.4.9"
+  }
+}
