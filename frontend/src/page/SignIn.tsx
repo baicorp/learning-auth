@@ -10,9 +10,7 @@ export default function SignIn() {
   const navigate = useNavigate();
 
   const { isLoading } = useSWR("user", async () => {
-    const res = await fetch(
-      `${import.meta.env.VITE_BASE_URL}/api/auth/current-user`
-    );
+    const res = await fetch(`/api/auth/current-user`);
     // check if user already login, if yes, redirect to home
     if (res.status === 200) {
       navigate("/");
@@ -62,13 +60,10 @@ function SignInForm() {
   const onSubmit: SubmitHandler<formSchema> = async (data) => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_URL}/api/auth/session/sign-in`,
-        {
-          method: "POST",
-          body: JSON.stringify(data),
-        }
-      );
+      const res = await fetch("/api/auth/session/sign-in", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
       setLoading(false);
       if (res.status !== 200) {
         const user = await res.json();

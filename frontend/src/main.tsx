@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { App, SignIn, SignUp } from "./page";
+import { App, SignIn, SignUp, About } from "./page";
 import "./index.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -11,12 +11,16 @@ const route = createBrowserRouter([
     element: <App />,
   },
   {
-    path: "/Sign-up",
+    path: "/sign-up",
     element: <SignUp />,
   },
   {
     path: "/sign-in",
     element: <SignIn />,
+  },
+  {
+    path: "/about",
+    element: <About />,
   },
 ]);
 
