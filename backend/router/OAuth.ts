@@ -1,10 +1,11 @@
 import { Hono } from "hono";
-import { html, raw } from "hono/html";
 import { generateState, generateCodeVerifier } from "arctic";
 import { getCookie, setCookie } from "hono/cookie";
 import { google, github } from "../lib/oauth";
-import { sessionDatabase, userDatabase } from "../../db";
-import type { SessionDatabase, UserDatabase } from "../type";
+import { lucia } from "../lib/lucia";
+import { db } from "../lib/drizzle";
+import { usersTable } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 const OAuth = new Hono();
 
@@ -61,28 +62,33 @@ OAuth.get("/google/callback", async (c) => {
 
   const user = await response.json();
 
-  // find if the user is already registered
-  const registeredUser = userDatabase.find(
-    (userdb) => userdb.email === user.email
-  );
+  // check if user is registered
+  const registeredUser = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, user.email));
 
   // if user is not registered then add new user and create new session
-  if (!registeredUser) {
-    const newUser: UserDatabase = {
-      id: crypto.randomUUID(),
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-    };
-    const newSession: SessionDatabase = {
-      id: crypto.randomUUID(),
-      userId: newUser.id,
-    };
+  if (registeredUser.length === 0) {
+    // to add new user to db
+    const newUser = await db
+      .insert(usersTable)
+      .values({
+        name: user.name,
+        email: user.email,
+        picture: user.picture,
+      })
+      .returning({ id: usersTable.id });
 
-    userDatabase.push(newUser);
-    sessionDatabase.push(newSession);
-
-    setCookie(c, "session-id", newSession.id, { httpOnly: true });
+    //create new session
+    const session = await lucia.createSession(newUser[0].id, {});
+    const sessionCookie = lucia.createSessionCookie(session.id);
+    setCookie(
+      c,
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
     // return html that close popup tab
     return c.html(`
     <html>
@@ -95,14 +101,15 @@ OAuth.get("/google/callback", async (c) => {
     `);
   }
 
-  // if user registered then add new session for registeredUser
-  const newSession: SessionDatabase = {
-    id: crypto.randomUUID(),
-    userId: registeredUser.id,
-  };
-
-  sessionDatabase.push(newSession);
-  setCookie(c, "session-id", newSession.id, { httpOnly: true });
+  // if user registered then add create new session for registeredUser
+  const session = await lucia.createSession(registeredUser[0].id, {});
+  const sessionCookie = lucia.createSessionCookie(session.id);
+  setCookie(
+    c,
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  );
 
   // return html that close popup tab
   return c.html(`
@@ -164,49 +171,54 @@ OAuth.get("/github/callback", async (c) => {
   const userProfile = await responseUserProfile.json();
   const userEmail = await responseUserEmail.json();
 
-  // find if the user is already registered
-  const registeredUser = userDatabase.find(
-    (user) => user.email === userEmail[0].email
-  );
+  // check if user is registered in db
+  const registeredUser = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, userEmail[0].email));
 
   // if user is not registered then add new user and create new session
-  if (!registeredUser) {
-    const newUser: UserDatabase = {
-      id: crypto.randomUUID(),
-      email: userEmail[0].email,
-      name: userProfile?.name,
-      picture: userProfile?.avatar_url,
-    };
-    const newSession: SessionDatabase = {
-      id: crypto.randomUUID(),
-      userId: newUser.id,
-    };
+  if (registeredUser.length === 0) {
+    // to add new user to db
+    const newUser = await db
+      .insert(usersTable)
+      .values({
+        email: userEmail[0].email,
+        name: userProfile?.name,
+        picture: userProfile?.avatar_url,
+      })
+      .returning({ id: usersTable.id });
 
-    userDatabase.push(newUser);
-    sessionDatabase.push(newSession);
-    setCookie(c, "session-id", newSession.id, { httpOnly: true });
-
+    //create new session
+    const session = await lucia.createSession(newUser[0].id, {});
+    const sessionCookie = lucia.createSessionCookie(session.id);
+    setCookie(
+      c,
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
     // return html that close popup tab
     return c.html(`
-      <html>
+    <html>
       <body>
-      <script>
-      window.opener.postMessage("success");
-      window.close();
-      </script>
+        <script>
+          window.close();
+        </script>
       </body>
-      </html>
+    </html>
     `);
   }
 
   // if user registered then add new session for registeredUser
-  const newSession: SessionDatabase = {
-    id: crypto.randomUUID(),
-    userId: registeredUser.id,
-  };
-
-  sessionDatabase.push(newSession);
-  setCookie(c, "session-id", newSession.id, { httpOnly: true });
+  const session = await lucia.createSession(registeredUser[0].id, {});
+  const sessionCookie = lucia.createSessionCookie(session.id);
+  setCookie(
+    c,
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  );
 
   // return html that close popup tab
   return c.html(`

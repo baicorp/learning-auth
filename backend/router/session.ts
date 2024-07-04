@@ -1,6 +1,9 @@
 import { Hono } from "hono";
-import { setCookie, getCookie } from "hono/cookie";
-import { sessionDatabase, userDatabase } from "../../db";
+import { setCookie } from "hono/cookie";
+import { lucia } from "../lib/lucia";
+import { db } from "../lib/drizzle";
+import { usersTable } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 const session = new Hono();
 
@@ -13,13 +16,23 @@ session.post("/sign-up", async (c) => {
     return c.json({
       message: "email, name, password, repeatPassword are required",
     });
-  } else if (userDatabase.find((user) => user.email === email)) {
-    //check if user already exists
+  }
+
+  const user = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+
+  //check if user already exists
+  if (user.length !== 0) {
     c.status(400);
     return c.json({
       message: "user already exists",
     });
-  } else if (password !== repeatPassword) {
+  }
+
+  if (password !== repeatPassword) {
     //check if password and repeatPassword are same
     c.status(400);
     return c.json({ message: "password and repeatPassword must be same" });
@@ -28,22 +41,29 @@ session.post("/sign-up", async (c) => {
   // created hashed password to store in database
   const hashedPassword = await Bun.password.hash(password);
 
-  const newUser = {
-    id: crypto.randomUUID(),
-    name,
-    email,
-    password: hashedPassword,
-  };
+  const newUser = await db
+    .insert(usersTable)
+    .values({
+      name,
+      email,
+      password: hashedPassword,
+    })
+    .returning({ id: usersTable.id });
 
-  const newSession = {
-    id: crypto.randomUUID(),
-    userId: newUser.id,
-  };
+  if (newUser.length === 0 && !newUser[0].id) {
+    c.status(400);
+    return c.json({ message: "Failed to signup" });
+  }
 
-  userDatabase.push(newUser);
-  sessionDatabase.push(newSession);
-
-  setCookie(c, "session-id", newSession.id, { httpOnly: true });
+  //create new session for user
+  const session = await lucia.createSession(newUser[0].id, {});
+  const sessionCookie = lucia.createSessionCookie(session.id);
+  setCookie(
+    c,
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  );
 
   c.status(200);
   return c.json({ success: true, message: "success sign-up" });
@@ -59,9 +79,14 @@ session.post("/sign-in", async (c) => {
     });
   }
 
-  // check if user email is exitst
-  const user = userDatabase.find((data) => data.email === email);
-  if (!user || !user.password) {
+  // check if user exists in database
+  const user = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+
+  if (user.length === 0 || !user[0].password) {
     c.status(401);
     return c.json({
       message: "User not found",
@@ -69,7 +94,7 @@ session.post("/sign-in", async (c) => {
   }
 
   // check if password is correct
-  const verify = await Bun.password.verify(password, user.password);
+  const verify = await Bun.password.verify(password, user[0].password);
   if (!verify) {
     c.status(401);
     return c.json({
@@ -77,32 +102,14 @@ session.post("/sign-in", async (c) => {
     });
   }
 
-  // check user is already login
-  const sessionId = getCookie(c, "session-id");
-  if (sessionId) {
-    //check if current user sessionCookies is available in session database
-    const currentSession = sessionDatabase.find(
-      (session) => session.id === sessionId
-    );
-
-    if (currentSession) {
-      // check if userid from current session is the same as logged user
-      if (currentSession.userId === user.id) {
-        c.status(400);
-        return c.json({
-          message: "you are already logged in",
-        });
-      }
-    }
-  }
-
-  const newSession = {
-    id: crypto.randomUUID(),
-    userId: user.id,
-  };
-
-  sessionDatabase.push(newSession);
-  setCookie(c, "session-id", newSession.id, { httpOnly: true });
+  const session = await lucia.createSession(user[0].id, {});
+  const sessionCookie = lucia.createSessionCookie(session.id);
+  setCookie(
+    c,
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  );
 
   return c.json({ success: true, message: "success sign-in" });
 });

@@ -2,55 +2,76 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { movies, OAuth, session } from "./router";
 import authMiddleware from "./middleware/auth-middleware";
-import { deleteCookie, getCookie } from "hono/cookie";
-import { sessionDatabase, userDatabase } from "../db";
+import { getCookie, setCookie } from "hono/cookie";
+import { lucia } from "./lib/lucia";
+import { db } from "./lib/drizzle";
+import { usersTable } from "./db/schema";
+import { eq } from "drizzle-orm";
 
 const app = new Hono().basePath("/api/auth");
-app.use(logger());
 
-app.get("/", (c) => {
-  return c.text("Hello World!");
-});
+app.use("*", logger());
 
-app.get("/current-user", (c) => {
-  const session = getCookie(c, "session-id");
+app.get("/current-user", async (c) => {
+  const sessionCookie = getCookie(c, lucia.sessionCookieName);
+  if (!sessionCookie) {
+    c.status(401);
+    return c.json({ message: "unauthorized (no cookie)" });
+  }
 
+  // validate sessionId from cookies browser
+  const { user, session } = await lucia.validateSession(sessionCookie);
   if (!session) {
-    c.status(401);
-    return c.json({ message: "unauthorized" });
+    const sessionCookie = lucia.createBlankSessionCookie();
+    setCookie(
+      c,
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
   }
 
-  const currentSession = sessionDatabase.find(
-    (sessiondb) => sessiondb.id === session
-  );
-  if (!currentSession) {
-    c.status(401);
-    return c.json({ message: "unauthorized" });
+  //check if session is fresh
+  if (session && session.fresh) {
+    const newSession = await lucia.createSession(user.id, {});
+    const newSessionCookie = lucia.createSessionCookie(newSession.id);
+    setCookie(
+      c,
+      newSessionCookie.name,
+      newSessionCookie.value,
+      newSessionCookie.attributes
+    );
   }
 
-  const user = userDatabase.find((user) => user.id === currentSession.userId);
-  if (!user) {
+  // find user data that match current session
+  const currentUser = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, user!.id));
+
+  // check if there is a user
+  if (currentUser.length === 0) {
     c.status(401);
-    return c.json({ message: "unauthorized" });
+    return c.json({ message: "unauthorized (no user match with cookie)" });
   }
 
-  return c.json(user);
+  return c.json(currentUser[0]);
 });
 
 app.get("/logout", async (c) => {
-  const session = getCookie(c, "session-id");
+  const session = getCookie(c, lucia.sessionCookieName);
   if (!session) {
     return c.json({ message: "success logout" });
   }
 
-  const currentSessionIndex = sessionDatabase.findIndex(
-    (sessiondb) => sessiondb.id === session
-  );
-
   // detelete current session inside session database
-  if (currentSessionIndex) sessionDatabase.splice(currentSessionIndex, 1);
-  // detelete current sessionCookies
-  deleteCookie(c, "session-id");
+  const sessionCookie = lucia.createBlankSessionCookie();
+  setCookie(
+    c,
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  );
 
   c.status(200);
   return c.json({ message: "success logout" });
@@ -58,8 +79,6 @@ app.get("/logout", async (c) => {
 
 app.route("/session", session);
 app.route("/oauth", OAuth);
-
-//use middleware auth to protect all api/movies/* routes
 app.use("/movies/*", authMiddleware);
 app.route("/movies", movies);
 
@@ -69,4 +88,3 @@ const server = Bun.serve({
 });
 
 console.log(`Listening on localhost : ${server.port}`);
-console.log(`database : `, userDatabase);

@@ -1,24 +1,52 @@
-import { getCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import { type Context, type Next } from "hono";
-import { sessionDatabase, userDatabase } from "../../db";
+import { lucia } from "../lib/lucia";
+import { usersTable } from "../db/schema";
+import { db } from "../lib/drizzle";
+import { eq } from "drizzle-orm";
 
 export default async function userAuth(c: Context, next: Next) {
-  console.log(sessionDatabase);
-  const session = getCookie(c, "bai-session-auth");
-  if (!session) {
+  const sessionCookie = getCookie(c, lucia.sessionCookieName);
+  if (!sessionCookie) {
     c.status(401);
-    return c.json({ message: "unauthorized" });
-  }
-  //check if session available in session database
-  const valid = sessionDatabase.filter((data) => data.id === session);
-  if (valid.length === 0) {
-    c.status(401);
-    return c.json({ message: "unauthorized" });
+    return c.json({ message: "unauthorized (no cookie)" });
   }
 
-  //check the current user loggin
-  const currentUser = userDatabase.find((user) => user.id === valid[0].userId);
-  console.log(currentUser);
+  // validate sessionId from cookies browser
+  const { user, session } = await lucia.validateSession(sessionCookie);
+  if (!session) {
+    const sessionCookie = lucia.createBlankSessionCookie();
+    setCookie(
+      c,
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
+  }
+
+  //check if session is fresh
+  if (session && session.fresh) {
+    const newSession = await lucia.createSession(user.id, {});
+    const newSessionCookie = lucia.createSessionCookie(newSession.id);
+    setCookie(
+      c,
+      newSessionCookie.name,
+      newSessionCookie.value,
+      newSessionCookie.attributes
+    );
+  }
+
+  // find user data that match current session
+  const currentUser = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, user!.id));
+
+  // check if there is a user
+  if (currentUser.length === 0) {
+    c.status(401);
+    return c.json({ message: "unauthorized (no user match with cookie)" });
+  }
 
   await next();
 }
