@@ -9,7 +9,8 @@ export default async function userAuth(c: Context, next: Next) {
   const sessionCookie = getCookie(c, lucia.sessionCookieName);
   if (!sessionCookie) {
     c.status(401);
-    return c.json({ message: "unauthorized (no cookie)" });
+    // return c.json({ message: "unauthorized (no cookie)" });
+    return c.redirect("/sign-in");
   }
 
   // validate sessionId from cookies browser
@@ -22,6 +23,8 @@ export default async function userAuth(c: Context, next: Next) {
       sessionCookie.value,
       sessionCookie.attributes
     );
+    // return c.json({ message: "invalid session cookie" });
+    return c.redirect("/sign-in");
   }
 
   //check if session is fresh
@@ -45,7 +48,8 @@ export default async function userAuth(c: Context, next: Next) {
   // check if there is a user
   if (currentUser.length === 0) {
     c.status(401);
-    return c.json({ message: "unauthorized (no user match with cookie)" });
+    // return c.json({ message: "unauthorized (no user match with cookie)" });
+    return c.redirect("/sign-in");
   }
 
   await next();
