@@ -1,0 +1,1 @@
+export const SESSION_TIME_SPAN_IN_SECONDS = 30;
