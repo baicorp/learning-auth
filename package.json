@@ -3,7 +3,7 @@
   "module": "./backend/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --hot run ./backend/server.ts"
+    "dev": "bun --hot run ./src/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

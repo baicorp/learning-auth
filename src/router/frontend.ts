@@ -444,6 +444,8 @@ frontend.get("/sign-up", async (c) => {
 frontend.get("/about", userAuth, (c) => {
   return c.html(
     htmlBuilder({
+      title: "About",
+      description: "About page",
       children: `
       <main class="h-dvh flex flex-col justify-center items-center gap-5">
         <h1 class="text-xl md:text-3xl text-center font-extrabold absolute top-20 left-1/2 -translate-x-1/2">
