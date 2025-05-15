@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import userAuth from "../middleware/auth-middleware";
 
 const movies = new Hono();
+
+movies.use("/*", userAuth);
 
 movies.get("/", (c) => {
   const movies = [

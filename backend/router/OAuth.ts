@@ -94,6 +94,10 @@ OAuth.get("/google/callback", async (c) => {
     <html>
       <body>
         <script>
+          // Notify the opener (main window)
+          if (window.opener) {
+            window.opener.postMessage({ type: "oauth-success" }, "*");
+          }
           window.close();
         </script>
       </body>
@@ -116,6 +120,10 @@ OAuth.get("/google/callback", async (c) => {
     <html>
       <body>
         <script>
+          // Notify the opener (main window)
+          if (window.opener) {
+            window.opener.postMessage({ type: "oauth-success" }, "*");
+          }
           window.close();
         </script>
       </body>
@@ -203,6 +211,10 @@ OAuth.get("/github/callback", async (c) => {
     <html>
       <body>
         <script>
+          // Notify the opener (main window)
+          if (window.opener) {
+            window.opener.postMessage({ type: "oauth-success" }, "*");
+          }
           window.close();
         </script>
       </body>
@@ -223,12 +235,15 @@ OAuth.get("/github/callback", async (c) => {
   // return html that close popup tab
   return c.html(`
     <html>
-    <body>
-    <script>
-    window.opener.postMessage("success");
-    window.close();
-    </script>
-    </body>
+      <body>
+        <script>
+          // Notify the opener (main window)
+          if (window.opener) {
+            window.opener.postMessage({ type: "oauth-success" }, "*");
+          }
+          window.close();
+        </script>
+      </body>
     </html>
   `);
 });

@@ -18,6 +18,12 @@ session.post("/sign-up", async (c) => {
     });
   }
 
+  if (password !== repeatPassword) {
+    //check if password and repeatPassword are same
+    c.status(400);
+    return c.json({ message: "password and repeatPassword must be same" });
+  }
+
   const user = await db
     .select()
     .from(usersTable)
@@ -30,12 +36,6 @@ session.post("/sign-up", async (c) => {
     return c.json({
       message: "user already exists",
     });
-  }
-
-  if (password !== repeatPassword) {
-    //check if password and repeatPassword are same
-    c.status(400);
-    return c.json({ message: "password and repeatPassword must be same" });
   }
 
   // created hashed password to store in database
@@ -98,7 +98,7 @@ session.post("/sign-in", async (c) => {
   if (!verify) {
     c.status(401);
     return c.json({
-      message: "Incorrect password",
+      message: "check your email or password",
     });
   }
 
