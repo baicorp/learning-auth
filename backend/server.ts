@@ -1,18 +1,18 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { movies, OAuth, session } from "./router";
-import authMiddleware from "./middleware/auth-middleware";
 import { getCookie, setCookie } from "hono/cookie";
 import { lucia } from "./lib/lucia";
 import { db } from "./lib/drizzle";
 import { usersTable } from "./db/schema";
 import { eq } from "drizzle-orm";
+import { frontend } from "./router/frontend";
 
-const app = new Hono().basePath("/api/auth");
+const app = new Hono();
 
 app.use("*", logger());
 
-app.get("/current-user", async (c) => {
+app.get("api/auth/current-user", async (c) => {
   const sessionCookie = getCookie(c, lucia.sessionCookieName);
   if (!sessionCookie) {
     c.status(401);
@@ -58,7 +58,7 @@ app.get("/current-user", async (c) => {
   return c.json(currentUser[0]);
 });
 
-app.get("/logout", async (c) => {
+app.get("api/auth/logout", async (c) => {
   const session = getCookie(c, lucia.sessionCookieName);
   if (!session) {
     return c.json({ message: "success logout" });
@@ -77,10 +77,11 @@ app.get("/logout", async (c) => {
   return c.json({ message: "success logout" });
 });
 
-app.route("/session", session);
-app.route("/oauth", OAuth);
-app.use("/movies/*", authMiddleware);
+// routing
+app.route("/", frontend);
 app.route("/movies", movies);
+app.route("api/auth/oauth", OAuth);
+app.route("api/auth/session", session);
 
 const server = Bun.serve({
   port: 3000,
