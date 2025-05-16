@@ -80,8 +80,8 @@ app.get("api/auth/logout", async (c) => {
 // routing
 app.route("/", frontend);
 app.route("/movies", movies);
-app.route("api/auth/oauth", OAuth);
-app.route("api/auth/session", session);
+app.route("/api/auth/oauth", OAuth);
+app.route("/api/auth/session", session);
 
 const server = Bun.serve({
   port: 3000,
