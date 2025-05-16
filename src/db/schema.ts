@@ -16,7 +16,10 @@ export const usersTable = sqliteTable("users", {
 });
 
 export const sessionTable = sqliteTable("session", {
-  id: text("id").notNull().primaryKey(),
+  id: text("id")
+    .$defaultFn(() => crypto.randomUUID())
+    .notNull()
+    .primaryKey(),
   userId: text("user_id")
     .notNull()
     .references(() => usersTable.id),
