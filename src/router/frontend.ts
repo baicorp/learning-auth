@@ -5,9 +5,10 @@ import { SESSION_TIME_SPAN_IN_SECONDS } from "../constant";
 
 export const frontend = new Hono();
 
+const currentUserAPIUrl = `${process.env.BASE_URL}/api/auth/current-user`;
+
 frontend.get("/", userAuth, async (c) => {
-  const apiUrl = `/api/auth/current-user`; // fallback
-  const res = await fetch(apiUrl, {
+  const res = await fetch(currentUserAPIUrl, {
     headers: {
       cookie: c.req.raw.headers.get("cookie") ?? "", // forward cookies
     },
@@ -85,8 +86,7 @@ frontend.get("/", userAuth, async (c) => {
 });
 
 frontend.get("/sign-in", async (c) => {
-  const apiUrl = `/api/auth/current-user`; // fallback
-  const res = await fetch(apiUrl, {
+  const res = await fetch(currentUserAPIUrl, {
     headers: {
       cookie: c.req.raw.headers.get("cookie") ?? "", // forward cookies
     },
@@ -255,8 +255,7 @@ frontend.get("/sign-in", async (c) => {
 });
 
 frontend.get("/sign-up", async (c) => {
-  const apiUrl = `/api/auth/current-user`; // fallback
-  const res = await fetch(apiUrl, {
+  const res = await fetch(currentUserAPIUrl, {
     headers: {
       cookie: c.req.raw.headers.get("cookie") ?? "", // forward cookies
     },
