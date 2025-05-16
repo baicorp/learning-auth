@@ -6,7 +6,7 @@ import { SESSION_TIME_SPAN_IN_SECONDS } from "../constant";
 export const frontend = new Hono();
 
 frontend.get("/", userAuth, async (c) => {
-  const apiUrl = "http://localhost:3000/api/auth/current-user"; // fallback
+  const apiUrl = `/api/auth/current-user`; // fallback
   const res = await fetch(apiUrl, {
     headers: {
       cookie: c.req.raw.headers.get("cookie") ?? "", // forward cookies
@@ -85,7 +85,7 @@ frontend.get("/", userAuth, async (c) => {
 });
 
 frontend.get("/sign-in", async (c) => {
-  const apiUrl = "http://localhost:3000/api/auth/current-user"; // fallback
+  const apiUrl = `/api/auth/current-user`; // fallback
   const res = await fetch(apiUrl, {
     headers: {
       cookie: c.req.raw.headers.get("cookie") ?? "", // forward cookies
@@ -175,7 +175,7 @@ frontend.get("/sign-in", async (c) => {
         
         async function handleClickOAuth(provider) {
           const res = await fetch(
-            \`\${window.location.origin}/api/auth/oauth/\${provider}/getConcentScreen\`
+            \`/api/auth/oauth/\${provider}/getConcentScreen\`
           );
 
           if (res.status !== 200) {
@@ -225,7 +225,7 @@ frontend.get("/sign-in", async (c) => {
           }
 
           try {
-            const res = await fetch("http://localhost:3000/api/auth/session/sign-in", 
+            const res = await fetch("/api/auth/session/sign-in", 
             {
               method: "POST",
               body: JSON.stringify({email, password})
@@ -255,7 +255,7 @@ frontend.get("/sign-in", async (c) => {
 });
 
 frontend.get("/sign-up", async (c) => {
-  const apiUrl = "http://localhost:3000/api/auth/current-user"; // fallback
+  const apiUrl = `/api/auth/current-user`; // fallback
   const res = await fetch(apiUrl, {
     headers: {
       cookie: c.req.raw.headers.get("cookie") ?? "", // forward cookies
@@ -353,7 +353,7 @@ frontend.get("/sign-up", async (c) => {
         
         async function handleClickOAuth(provider) {
           const res = await fetch(
-            \`\${window.location.origin}/api/auth/oauth/\${provider}/getConcentScreen\`
+            \`/api/auth/oauth/\${provider}/getConcentScreen\`
           );
 
           if (res.status !== 200) {
@@ -412,7 +412,7 @@ frontend.get("/sign-up", async (c) => {
           }
 
           try {
-            const res = await fetch("http://localhost:3000/api/auth/session/sign-up", 
+            const res = await fetch("/api/auth/session/sign-up", 
             {
               method: "POST",
               body: JSON.stringify({name: userName, email, password, repeatPassword})
