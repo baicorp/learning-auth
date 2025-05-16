@@ -469,6 +469,7 @@ frontend.get("/about", userAuth, (c) => {
           if (currentTime <= 1) {
             timeSpan.textContent = "0";
             clearInterval(intervalId); // stop the interval
+            window.location.replace("/sign-in");
           } else {
             timeSpan.textContent = currentTime - 1;
           }
